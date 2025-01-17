@@ -29,8 +29,5 @@ pub type TokenType {
 }
 
 pub type Token {
-  Token(
-    ttype: TokenType,
-    literal: String
-  )
+  Token(ttype: TokenType, literal: String)
 }
