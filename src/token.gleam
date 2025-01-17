@@ -24,6 +24,8 @@ pub type TokenType {
 
   LParen
   RParen
+  LBracket
+  RBracket
   LBrace
   RBrace
 }
