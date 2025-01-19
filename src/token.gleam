@@ -1,3 +1,5 @@
+import gleam/dict
+
 pub type TokenType {
   Illegal
   EOF
@@ -6,30 +8,32 @@ pub type TokenType {
   Int
 
   // operators
+  Assign
   Plus
-  Minus
-  Star
-  Slash
-  Bang
 
-  Eq
-  Neq
-  Greater
-  GreaterEq
-  Less
-  LessEq
-
+  // delimiters
   Comma
   Semicolon
 
   LParen
   RParen
-  LBracket
-  RBracket
   LBrace
   RBrace
+
+  // keywords
+  Function
+  Let
 }
 
 pub type Token {
   Token(ttype: TokenType, literal: String)
+}
+
+pub fn look_up_ident(ident: String) -> TokenType {
+  let kw = [#("fn", Function), #("let", Let)]
+  let keywords = dict.from_list(kw)
+  case dict.get(keywords, ident) {
+    Ok(v) -> v
+    Error(Nil) -> Ident
+  }
 }
