@@ -15,8 +15,19 @@ fn do_lex(input: String, acc: List(token.Token)) -> List(token.Token) {
       do_lex(rest, acc)
 
     // operators
+    "==" <> rest -> do_lex(rest, [token.Token(token.Eq, "=="), ..acc])
+    "!=" <> rest -> do_lex(rest, [token.Token(token.Neq, "!="), ..acc])
+    "<=" <> rest -> do_lex(rest, [token.Token(token.Le, "<="), ..acc])
+    ">=" <> rest -> do_lex(rest, [token.Token(token.Ge, ">="), ..acc])
+    "<" <> rest -> do_lex(rest, [token.Token(token.Lt, "<"), ..acc])
+    ">" <> rest -> do_lex(rest, [token.Token(token.Gt, ">"), ..acc])
+
     "=" <> rest -> do_lex(rest, [token.Token(token.Assign, "="), ..acc])
     "+" <> rest -> do_lex(rest, [token.Token(token.Plus, "+"), ..acc])
+    "-" <> rest -> do_lex(rest, [token.Token(token.Minus, "-"), ..acc])
+    "!" <> rest -> do_lex(rest, [token.Token(token.Bang, "!"), ..acc])
+    "*" <> rest -> do_lex(rest, [token.Token(token.Star, "*"), ..acc])
+    "/" <> rest -> do_lex(rest, [token.Token(token.Slash, "/"), ..acc])
 
     // delimiters
     "," <> rest -> do_lex(rest, [token.Token(token.Comma, ","), ..acc])

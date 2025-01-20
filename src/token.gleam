@@ -10,6 +10,17 @@ pub type TokenType {
   // operators
   Assign
   Plus
+  Minus
+  Bang
+  Star
+  Slash
+
+  Eq
+  Neq
+  Lt
+  Le
+  Gt
+  Ge
 
   // delimiters
   Comma
@@ -23,6 +34,11 @@ pub type TokenType {
   // keywords
   Function
   Let
+  TRUE
+  FALSE
+  If
+  Else
+  Return
 }
 
 pub type Token {
@@ -30,7 +46,15 @@ pub type Token {
 }
 
 pub fn look_up_ident(ident: String) -> TokenType {
-  let kw = [#("fn", Function), #("let", Let)]
+  let kw = [
+    #("fn", Function),
+    #("let", Let),
+    #("true", TRUE),
+    #("false", FALSE),
+    #("if", If),
+    #("else", Else),
+    #("return", Return),
+  ]
   let keywords = dict.from_list(kw)
   case dict.get(keywords, ident) {
     Ok(v) -> v
