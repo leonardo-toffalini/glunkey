@@ -89,11 +89,11 @@ fn do_lex(input: String, acc: List(token.Token)) -> List(token.Token) {
   }
 }
 
-fn lex_ident(input) -> #(String, String) {
+fn lex_ident(input: String) -> #(String, String) {
   read_while(input, is_letter)
 }
 
-fn lex_number(input) -> #(String, String) {
+fn lex_number(input: String) -> #(String, String) {
   read_while(input, is_number)
 }
 
