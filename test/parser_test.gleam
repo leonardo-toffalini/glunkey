@@ -14,10 +14,10 @@ let x = 5;
 let y = 10;
 let foobar = 838383;"
 
-  let tokens = lexer.lex(input)
+      let tokens = lexer.lex(input)
   let program = parser.parse(tokens)
-  io.debug("tokens:")
-          io.debug(tokens)
-  io.debug("program:")
+       io.debug("tokens:")
+  io.debug(tokens)
+          io.debug("program:")
   io.debug(program)
 }
