@@ -1,11 +1,10 @@
 import ast
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleeunit
 import gleeunit/should
 import lexer
 import parser
-import token
 
 pub fn main() {
   gleeunit.main()
@@ -31,9 +30,11 @@ let foobar = 838383;"
         statements
         |> list.map(fn(stmt) {
           case stmt {
-            ast.LetStatement(_, ast.Identifier(_, value), _) -> value
-            ast.ReturnStatement(_, _) ->
+            ast.LetStatement(ast.Identifier(value), _) -> value
+            ast.ReturnStatement(_) ->
               panic as "found return statement in let statement test"
+            ast.ExpressionStatement(_) ->
+              panic as "found expression statement in let statement test"
           }
         })
       statement_identifiers
@@ -54,9 +55,59 @@ pub fn return_statement_test() {
       |> should.equal(1)
 
       list.first(statements)
-      |> should.equal(
-        Ok(ast.ReturnStatement(token.Token(token.Return, "return"), None)),
-      )
+      |> should.equal(Ok(ast.ReturnStatement(None)))
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn identifier_expression_test() {
+  let input = "foobar;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: Some(ast.Identifier(value: "foobar")))) ->
+          Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn multiple_identifier_expressions_test() {
+  let input =
+    "
+    first_ident;
+    second_ident;
+    third_ident;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(3)
+
+      let expected_identifiers = ["first_ident", "second_ident", "third_ident"]
+      let statement_identifiers =
+        statements
+        |> list.map(fn(stmt) {
+          case stmt {
+            ast.ExpressionStatement(expr: Some(ast.Identifier(value: v))) -> v
+            _ -> panic as "expected expression statement with identifier"
+          }
+        })
+      statement_identifiers
+      |> should.equal(expected_identifiers)
     }
     Error(_) -> should.fail()
   }

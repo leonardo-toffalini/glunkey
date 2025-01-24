@@ -79,7 +79,8 @@ fn do_lex(input: String, acc: List(token.Token)) -> List(token.Token) {
     | "w" as c <> rest
     | "x" as c <> rest
     | "y" as c <> rest
-    | "z" as c <> rest -> {
+    | "z" as c <> rest
+    | "_" as c <> rest -> {
       let #(lit, r) = lex_ident(c <> rest)
       let tt = token.look_up_ident(lit)
       do_lex(r, [token.Token(tt, lit), ..acc])
@@ -150,7 +151,8 @@ fn is_letter(ch: String) -> Bool {
     | "w"
     | "x"
     | "y"
-    | "z" -> True
+    | "z"
+    | "_" -> True
     _ -> False
   }
 }

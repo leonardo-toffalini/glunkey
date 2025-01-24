@@ -1,13 +1,43 @@
 import ast
+import gleam/dict
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import token
 
-pub type ProgramResult =
+type Precedence {
+  Lowest
+  Equals
+  LessGreater
+  Sum
+  Product
+  Prefix
+  Call
+}
+
+type ProgramResult =
   Result(ast.Program, String)
 
-pub type ParseResult =
+type ParseStmtResult =
   Result(#(ast.Statement, List(token.Token)), String)
+
+type ParseExprResult =
+  Result(#(ast.Expression, List(token.Token)), String)
+
+type PrefixParseFn =
+  fn(List(token.Token)) -> ParseExprResult
+
+type InfixParseFn =
+  fn(ast.Expression, List(token.Token)) -> ParseExprResult
+
+fn get_prefix_parse_fns() -> dict.Dict(token.TokenType, PrefixParseFn) {
+  [#(token.Ident, parse_identifier)]
+  |> dict.from_list()
+}
+
+fn get_infix_parse_fns() -> dict.Dict(token.TokenType, InfixParseFn) {
+  []
+  |> dict.from_list()
+}
 
 pub fn parse(tokens: List(token.Token)) -> ProgramResult {
   do_parse(tokens, [])
@@ -26,30 +56,21 @@ fn do_parse(tokens: List(token.Token), acc: ast.Program) -> ProgramResult {
   }
 }
 
-fn parse_statement(tokens: List(token.Token)) -> ParseResult {
+fn parse_statement(tokens: List(token.Token)) -> ParseStmtResult {
   case tokens {
+    [] -> Error("expected statement, got: empty token list")
     [token.Token(token.Let, "let"), ..rest] -> parse_let_statement(rest)
     [token.Token(token.Return, "return"), ..rest] ->
       parse_return_statement(rest)
-    [first, ..] -> Error("unknown stmt token:" <> first.literal)
-    [] -> Error("expected statement, got: empty token list")
+    _ -> parse_expression_statement(tokens)
   }
 }
 
-fn parse_let_statement(tokens: List(token.Token)) -> ParseResult {
+fn parse_let_statement(tokens: List(token.Token)) -> ParseStmtResult {
   case tokens {
-    [
-      token.Token(token.Ident, ident) as cur_tok,
-      token.Token(token.Assign, "="),
-      ..rest
-    ] -> {
-      let identifier = ast.Identifier(token: cur_tok, value: ident)
-      let value =
-        ast.LetStatement(
-          token: token.Token(token.Let, "let"),
-          name: identifier,
-          value: None,
-        )
+    [token.Token(token.Ident, ident), token.Token(token.Assign, "="), ..rest] -> {
+      let identifier = ast.Identifier(value: ident)
+      let value = ast.LetStatement(name: identifier, value: None)
 
       case parse_until(rest, token.Token(token.Semicolon, ";")) {
         Ok(rest) -> Ok(#(value, rest))
@@ -69,19 +90,43 @@ fn parse_let_statement(tokens: List(token.Token)) -> ParseResult {
   }
 }
 
-fn parse_return_statement(tokens: List(token.Token)) -> ParseResult {
+fn parse_return_statement(tokens: List(token.Token)) -> ParseStmtResult {
   case tokens {
     _ -> {
-      let return_statement =
-        ast.ReturnStatement(
-          token: token.Token(token.Return, "return"),
-          return_value: None,
-        )
+      let return_statement = ast.ReturnStatement(return_value: None)
       case parse_until(tokens, token.Token(token.Semicolon, ";")) {
         Ok(rest) -> Ok(#(return_statement, rest))
         Error(e) -> Error(e)
       }
     }
+  }
+}
+
+fn parse_expression_statement(tokens: List(token.Token)) -> ParseStmtResult {
+  case parse_expression(tokens, Lowest) {
+    Error(e) -> Error(e)
+    Ok(#(expr, rest)) -> {
+      case rest {
+        [token.Token(token.Semicolon, ";"), ..rest] ->
+          Ok(#(ast.ExpressionStatement(Some(expr)), rest))
+        _ -> Error("Missing semicolon after expression statement")
+      }
+    }
+  }
+}
+
+fn parse_expression(
+  tokens: List(token.Token),
+  precedence: Precedence,
+) -> ParseExprResult {
+  case tokens {
+    [token.Token(ttype, _), ..] -> {
+      case get_prefix_parse_fns() |> dict.get(ttype) {
+        Ok(prefix) -> prefix(tokens)
+        Error(Nil) -> Error("Did not find prefix parse function")
+      }
+    }
+    _ -> Error("Expected expression, got empty token list")
   }
 }
 
@@ -93,5 +138,12 @@ fn parse_until(
     [] -> Error("Did not find terminating token: " <> terminal.literal)
     [first, ..rest] if first.ttype == terminal.ttype -> Ok(rest)
     [_, ..rest] -> parse_until(rest, terminal)
+  }
+}
+
+fn parse_identifier(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(_, literal), ..rest] -> Ok(#(ast.Identifier(literal), rest))
+    [] -> Error("Expected identifier in parse_identifier, got empty token list")
   }
 }
