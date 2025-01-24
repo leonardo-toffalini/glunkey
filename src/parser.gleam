@@ -29,8 +29,10 @@ fn do_parse(tokens: List(token.Token), acc: ast.Program) -> ProgramResult {
 fn parse_statement(tokens: List(token.Token)) -> ParseResult {
   case tokens {
     [token.Token(token.Let, "let"), ..rest] -> parse_let_statement(rest)
+    [token.Token(token.Return, "return"), ..rest] ->
+      parse_return_statement(rest)
     [first, ..] -> Error("unknown stmt token:" <> first.literal)
-    _ -> Error("default branch in parse_statement")
+    [] -> Error("expected statement, got: empty token list")
   }
 }
 
@@ -49,22 +51,47 @@ fn parse_let_statement(tokens: List(token.Token)) -> ParseResult {
           value: None,
         )
 
-      let assert Ok(rest) = parse_until(rest, token.Token(token.Semicolon, ";"))
-
-      Ok(#(value, rest))
+      case parse_until(rest, token.Token(token.Semicolon, ";")) {
+        Ok(rest) -> Ok(#(value, rest))
+        Error(e) -> Error(e)
+      }
     }
-    [] -> Error("Empty tokens in parse let statement")
-    _ -> Error("default case")
+
+    // unexpected outcomes
+    [token.Token(token.Ident, _), got_tok, ..] ->
+      Error(
+        "Expected '=' after identifier in let statement, got: "
+        <> got_tok.literal,
+      )
+    [got_tok, ..] ->
+      Error("Expected identifier after 'let', got: " <> got_tok.literal)
+    [] -> Error("Expected identifier after 'let', got: nothing")
+  }
+}
+
+fn parse_return_statement(tokens: List(token.Token)) -> ParseResult {
+  case tokens {
+    _ -> {
+      let return_statement =
+        ast.ReturnStatement(
+          token: token.Token(token.Return, "return"),
+          return_value: None,
+        )
+      case parse_until(tokens, token.Token(token.Semicolon, ";")) {
+        Ok(rest) -> Ok(#(return_statement, rest))
+        Error(e) -> Error(e)
+      }
+    }
   }
 }
 
 fn parse_until(
   tokens: List(token.Token),
-  stop: token.Token,
+  terminal: token.Token,
 ) -> Result(List(token.Token), String) {
   case tokens {
-    [] -> Error("did not find stopper token")
-    [first, ..rest] if first.ttype == stop.ttype -> Ok(rest)
-    [_, ..rest] -> parse_until(rest, stop)
+    [] -> Error("Did not find terminating token: " <> terminal.literal)
+    [first, ..rest] if first.ttype == terminal.ttype -> Ok(rest)
+    [_, ..rest] -> parse_until(rest, terminal)
   }
 }

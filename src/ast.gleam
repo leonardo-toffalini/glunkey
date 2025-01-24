@@ -4,6 +4,7 @@ import token
 // NOTE: value is optional as of now because we cannot parse expressions just yet
 pub type Statement {
   LetStatement(token: token.Token, name: Expression, value: Option(Expression))
+  ReturnStatement(token: token.Token, return_value: Option(Expression))
 }
 
 pub type Expression {
