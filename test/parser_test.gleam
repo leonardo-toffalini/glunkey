@@ -31,12 +31,8 @@ let foobar = 838383;"
         |> list.map(fn(stmt) {
           case stmt {
             ast.LetStatement(ast.Identifier(value), _) -> value
-            ast.LetStatement(ast.IntegerLiteral(_), _) ->
-              panic as "expected identifier in let statement, got integer literal"
-            ast.ReturnStatement(_) ->
-              panic as "found return statement in let statement test"
-            ast.ExpressionStatement(_) ->
-              panic as "found expression statement in let statement test"
+            _ ->
+              panic as "Expected let statement with the name being an identifier"
           }
         })
       statement_identifiers
@@ -98,6 +94,52 @@ pub fn identifier_expression_test() {
       case list.first(statements) {
         Ok(ast.ExpressionStatement(expr: Some(ast.Identifier(value: "foobar")))) ->
           Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn prefix_bang_expression_test() {
+  let input = "!5;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: Some(ast.PrefixExpression(
+          operator: "!",
+          right: ast.IntegerLiteral(value: 5),
+        )))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn prefix_minus_expression_test() {
+  let input = "-15;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: Some(ast.PrefixExpression(
+          operator: "-",
+          right: ast.IntegerLiteral(value: 15),
+        )))) -> Nil
         _ -> should.fail()
       }
     }

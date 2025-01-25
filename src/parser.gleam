@@ -3,18 +3,27 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import token
 
-type Precedence {
-  Lowest
-  Equals
-  LessGreater
-  Sum
-  Product
-  Prefix
-  Call
-}
+// Precedences
+const lowest_pre = 0
+
+const equals_pre = 1
+
+const less_greater_pre = 2
+
+const sum_pre = 3
+
+const product_pre = 4
+
+const prefix_pre = 5
+
+const call_pre = 6
+
+type Precedence =
+  Int
 
 type ProgramResult =
   Result(ast.Program, String)
@@ -32,12 +41,40 @@ type InfixParseFn =
   fn(ast.Expression, List(token.Token)) -> ParseExprResult
 
 fn get_prefix_parse_fns() -> dict.Dict(token.TokenType, PrefixParseFn) {
-  [#(token.Ident, parse_identifier), #(token.Int, parse_integer_literal)]
+  [
+    #(token.Ident, parse_identifier),
+    #(token.Int, parse_integer_literal),
+    #(token.Bang, parse_prefix_expression),
+    #(token.Minus, parse_prefix_expression),
+  ]
   |> dict.from_list()
 }
 
 fn get_infix_parse_fns() -> dict.Dict(token.TokenType, InfixParseFn) {
-  []
+  [
+    #(token.Plus, parse_infix_expression),
+    #(token.Minus, parse_infix_expression),
+    #(token.Slash, parse_infix_expression),
+    #(token.Star, parse_infix_expression),
+    #(token.Eq, parse_infix_expression),
+    #(token.Neq, parse_infix_expression),
+    #(token.Lt, parse_infix_expression),
+    #(token.Gt, parse_infix_expression),
+  ]
+  |> dict.from_list()
+}
+
+fn get_precedence_dict() -> dict.Dict(token.TokenType, Precedence) {
+  [
+    #(token.Eq, equals_pre),
+    #(token.Neq, equals_pre),
+    #(token.Lt, less_greater_pre),
+    #(token.Gt, less_greater_pre),
+    #(token.Plus, sum_pre),
+    #(token.Minus, sum_pre),
+    #(token.Slash, product_pre),
+    #(token.Star, product_pre),
+  ]
   |> dict.from_list()
 }
 
@@ -105,7 +142,7 @@ fn parse_return_statement(tokens: List(token.Token)) -> ParseStmtResult {
 }
 
 fn parse_expression_statement(tokens: List(token.Token)) -> ParseStmtResult {
-  case parse_expression(tokens, Lowest) {
+  case parse_expression(tokens, lowest_pre) {
     Error(e) -> Error(e)
     Ok(#(expr, rest)) -> {
       case rest {
@@ -165,5 +202,58 @@ fn parse_integer_literal(tokens: List(token.Token)) -> ParseExprResult {
     [] -> Error("Expected integer literal, got empty token list")
     [token.Token(ttype, _), ..] ->
       Error("Expected integer literal, got: " <> string.inspect(ttype))
+  }
+}
+
+fn parse_prefix_expression(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(_, literal), ..rest] -> {
+      use #(right, rest) <- result.try(parse_expression(rest, prefix_pre))
+      Ok(#(ast.PrefixExpression(literal, right), rest))
+    }
+    [] -> Error("Expected prefix expression, got empty token list")
+  }
+}
+
+// fn parse_infix_expression(
+//   left: ast.Expression,
+//   tokens: List(token.Token),
+// ) -> ParseExprResult {
+//   case tokens {
+//     [token.Token(ttype, literal), ..rest] -> {
+//       case get_precedence_dict() |> dict.get(ttype) {
+//         Ok(precedence) ->
+//           case parse_expression(rest, precedence) {
+//             Ok(#(right, rest)) ->
+//               Ok(#(ast.Infixexpression(left, literal, right), rest))
+//             Error(e) -> Error(e)
+//           }
+//         Error(Nil) ->
+//           Error(
+//             "Could not find precedence for token of type: "
+//             <> string.inspect(ttype),
+//           )
+//       }
+//     }
+//     [] -> Error("Expected infix operator, got empty token list")
+//   }
+// }
+
+fn parse_infix_expression(
+  left: ast.Expression,
+  tokens: List(token.Token),
+) -> ParseExprResult {
+  case tokens {
+    [token.Token(ttype, literal), ..rest] -> {
+      use precedence <- result.try(
+        result.map_error(dict.get(get_precedence_dict(), ttype), fn(_) {
+          "Could not find precedence for token of type: "
+          <> string.inspect(ttype)
+        }),
+      )
+      use #(right, rest) <- result.try(parse_expression(rest, precedence))
+      Ok(#(ast.Infixexpression(left, literal, right), rest))
+    }
+    [] -> Error("Expected infix operator, got empty token list")
   }
 }

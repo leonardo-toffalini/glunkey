@@ -10,6 +10,8 @@ pub type Statement {
 pub type Expression {
   Identifier(value: String)
   IntegerLiteral(value: Int)
+  PrefixExpression(operator: String, right: Expression)
+  Infixexpression(left: Expression, operator: String, right: Expression)
 }
 
 pub type Node {
