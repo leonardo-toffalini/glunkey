@@ -31,6 +31,8 @@ let foobar = 838383;"
         |> list.map(fn(stmt) {
           case stmt {
             ast.LetStatement(ast.Identifier(value), _) -> value
+            ast.LetStatement(ast.IntegerLiteral(_), _) ->
+              panic as "expected identifier in let statement, got integer literal"
             ast.ReturnStatement(_) ->
               panic as "found return statement in let statement test"
             ast.ExpressionStatement(_) ->
@@ -56,6 +58,27 @@ pub fn return_statement_test() {
 
       list.first(statements)
       |> should.equal(Ok(ast.ReturnStatement(None)))
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn integer_literal_expression_test() {
+  let input = "5;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: Some(ast.IntegerLiteral(value: 5)))) ->
+          Nil
+        _ -> should.fail()
+      }
     }
     Error(_) -> should.fail()
   }

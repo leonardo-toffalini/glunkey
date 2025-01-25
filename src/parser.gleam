@@ -1,7 +1,9 @@
 import ast
 import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import token
 
 type Precedence {
@@ -30,7 +32,7 @@ type InfixParseFn =
   fn(ast.Expression, List(token.Token)) -> ParseExprResult
 
 fn get_prefix_parse_fns() -> dict.Dict(token.TokenType, PrefixParseFn) {
-  [#(token.Ident, parse_identifier)]
+  [#(token.Ident, parse_identifier), #(token.Int, parse_integer_literal)]
   |> dict.from_list()
 }
 
@@ -123,10 +125,14 @@ fn parse_expression(
     [token.Token(ttype, _), ..] -> {
       case get_prefix_parse_fns() |> dict.get(ttype) {
         Ok(prefix) -> prefix(tokens)
-        Error(Nil) -> Error("Did not find prefix parse function")
+        Error(Nil) ->
+          Error(
+            "Did not find prefix parse function for token type: "
+            <> string.inspect(ttype),
+          )
       }
     }
-    _ -> Error("Expected expression, got empty token list")
+    [] -> Error("Expected expression, got empty token list")
   }
 }
 
@@ -145,5 +151,19 @@ fn parse_identifier(tokens: List(token.Token)) -> ParseExprResult {
   case tokens {
     [token.Token(_, literal), ..rest] -> Ok(#(ast.Identifier(literal), rest))
     [] -> Error("Expected identifier in parse_identifier, got empty token list")
+  }
+}
+
+fn parse_integer_literal(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(token.Int, literal), ..rest] -> {
+      case int.parse(literal) {
+        Ok(value) -> Ok(#(ast.IntegerLiteral(value), rest))
+        Error(Nil) -> Error("Could not parse " <> literal <> " as integer")
+      }
+    }
+    [] -> Error("Expected integer literal, got empty token list")
+    [token.Token(ttype, _), ..] ->
+      Error("Expected integer literal, got: " <> string.inspect(ttype))
   }
 }

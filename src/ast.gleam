@@ -9,6 +9,7 @@ pub type Statement {
 
 pub type Expression {
   Identifier(value: String)
+  IntegerLiteral(value: Int)
 }
 
 pub type Node {
