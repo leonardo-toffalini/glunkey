@@ -1,6 +1,7 @@
 import ast
 import gleam/dict
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -87,10 +88,8 @@ fn do_parse(tokens: List(token.Token), acc: ast.Program) -> ProgramResult {
     [] -> Error("Empty tokens")
     [token.Token(token.EOF, "")] -> Ok(list.reverse(acc))
     tokens -> {
-      case parse_statement(tokens) {
-        Ok(#(stmt, rest)) -> do_parse(rest, [stmt, ..acc])
-        Error(e) -> Error(e)
-      }
+      use #(stmt, rest) <- result.try(parse_statement(tokens))
+      do_parse(rest, [stmt, ..acc])
     }
   }
 }
@@ -111,10 +110,11 @@ fn parse_let_statement(tokens: List(token.Token)) -> ParseStmtResult {
       let identifier = ast.Identifier(value: ident)
       let value = ast.LetStatement(name: identifier, value: None)
 
-      case parse_until(rest, token.Token(token.Semicolon, ";")) {
-        Ok(rest) -> Ok(#(value, rest))
-        Error(e) -> Error(e)
-      }
+      use rest <- result.try(parse_until(
+        rest,
+        token.Token(token.Semicolon, ";"),
+      ))
+      Ok(#(value, rest))
     }
 
     // unexpected outcomes
@@ -130,27 +130,17 @@ fn parse_let_statement(tokens: List(token.Token)) -> ParseStmtResult {
 }
 
 fn parse_return_statement(tokens: List(token.Token)) -> ParseStmtResult {
-  case tokens {
-    _ -> {
-      let return_statement = ast.ReturnStatement(return_value: None)
-      case parse_until(tokens, token.Token(token.Semicolon, ";")) {
-        Ok(rest) -> Ok(#(return_statement, rest))
-        Error(e) -> Error(e)
-      }
-    }
-  }
+  let return_statement = ast.ReturnStatement(return_value: None)
+  use rest <- result.try(parse_until(tokens, token.Token(token.Semicolon, ";")))
+  Ok(#(return_statement, rest))
 }
 
 fn parse_expression_statement(tokens: List(token.Token)) -> ParseStmtResult {
-  case parse_expression(tokens, lowest_pre) {
-    Error(e) -> Error(e)
-    Ok(#(expr, rest)) -> {
-      case rest {
-        [token.Token(token.Semicolon, ";"), ..rest] ->
-          Ok(#(ast.ExpressionStatement(Some(expr)), rest))
-        _ -> Error("Missing semicolon after expression statement")
-      }
-    }
+  use #(expr, rest) <- result.try(parse_expression(tokens, lowest_pre))
+  case rest {
+    [token.Token(token.Semicolon, ";"), ..rest] ->
+      Ok(#(ast.ExpressionStatement(Some(expr)), rest))
+    _ -> Error("Missing semicolon after expression statement")
   }
 }
 
@@ -160,16 +150,37 @@ fn parse_expression(
 ) -> ParseExprResult {
   case tokens {
     [token.Token(ttype, _), ..] -> {
-      case get_prefix_parse_fns() |> dict.get(ttype) {
-        Ok(prefix) -> prefix(tokens)
-        Error(Nil) ->
-          Error(
-            "Did not find prefix parse function for token type: "
-            <> string.inspect(ttype),
-          )
-      }
+      use prefix <- result.try(get_prefix_fn(ttype))
+      use #(left_exp, rest) <- result.try(prefix(tokens))
+      parse_expr_with_precedence(rest, precedence, left_exp)
+      // Ok(#(left_exp, rest))
     }
     [] -> Error("Expected expression, got empty token list")
+  }
+}
+
+fn parse_expr_with_precedence(
+  tokens: List(token.Token),
+  prec: Precedence,
+  expr: ast.Expression,
+) -> ParseExprResult {
+  case tokens {
+    [] -> Error("I dont know what im supposed to do here")
+    [token.Token(token.Semicolon, ";"), ..] -> Ok(#(expr, tokens))
+    [token.Token(ttype, _), ..rest] -> {
+      case prec < get_precedence(ttype) {
+        False -> Ok(#(expr, tokens))
+        True -> {
+          case dict.get(get_infix_parse_fns(), ttype) {
+            Ok(infix) -> {
+              use #(left_expr, rest) <- result.try(infix(expr, tokens))
+              parse_expr_with_precedence(rest, prec, left_expr)
+            }
+            Error(Nil) -> Ok(#(expr, rest))
+          }
+        }
+      }
+    }
   }
 }
 
@@ -215,45 +226,27 @@ fn parse_prefix_expression(tokens: List(token.Token)) -> ParseExprResult {
   }
 }
 
-// fn parse_infix_expression(
-//   left: ast.Expression,
-//   tokens: List(token.Token),
-// ) -> ParseExprResult {
-//   case tokens {
-//     [token.Token(ttype, literal), ..rest] -> {
-//       case get_precedence_dict() |> dict.get(ttype) {
-//         Ok(precedence) ->
-//           case parse_expression(rest, precedence) {
-//             Ok(#(right, rest)) ->
-//               Ok(#(ast.Infixexpression(left, literal, right), rest))
-//             Error(e) -> Error(e)
-//           }
-//         Error(Nil) ->
-//           Error(
-//             "Could not find precedence for token of type: "
-//             <> string.inspect(ttype),
-//           )
-//       }
-//     }
-//     [] -> Error("Expected infix operator, got empty token list")
-//   }
-// }
-
 fn parse_infix_expression(
   left: ast.Expression,
   tokens: List(token.Token),
 ) -> ParseExprResult {
   case tokens {
     [token.Token(ttype, literal), ..rest] -> {
-      use precedence <- result.try(
-        result.map_error(dict.get(get_precedence_dict(), ttype), fn(_) {
-          "Could not find precedence for token of type: "
-          <> string.inspect(ttype)
-        }),
-      )
+      let precedence = get_precedence(ttype)
       use #(right, rest) <- result.try(parse_expression(rest, precedence))
       Ok(#(ast.Infixexpression(left, literal, right), rest))
     }
     [] -> Error("Expected infix operator, got empty token list")
   }
+}
+
+fn get_prefix_fn(ttype: token.TokenType) -> Result(PrefixParseFn, String) {
+  result.map_error(dict.get(get_prefix_parse_fns(), ttype), fn(_) {
+    "Could not find prefix parse function for token of type: "
+    <> string.inspect(ttype)
+  })
+}
+
+fn get_precedence(ttype: token.TokenType) -> Precedence {
+  result.unwrap(dict.get(get_precedence_dict(), ttype), lowest_pre)
 }

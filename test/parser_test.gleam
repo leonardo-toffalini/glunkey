@@ -177,3 +177,67 @@ pub fn multiple_identifier_expressions_test() {
     Error(_) -> should.fail()
   }
 }
+
+pub fn infix_expression_test() {
+  let test_cases = [
+    #("1 + 2;", "+", ast.IntegerLiteral(1), ast.IntegerLiteral(2)),
+    #("1 * 2;", "*", ast.IntegerLiteral(1), ast.IntegerLiteral(2)),
+    #("1 - 2;", "-", ast.IntegerLiteral(1), ast.IntegerLiteral(2)),
+    #("4 / 2;", "/", ast.IntegerLiteral(4), ast.IntegerLiteral(2)),
+  ]
+
+  test_cases
+  |> list.map(fn(test_case) {
+    let #(input, e_operator, e_left, e_right) = test_case
+    let tokens = lexer.lex(input)
+    let program = parser.parse(tokens)
+
+    case program {
+      Ok(statements) -> {
+        statements
+        |> list.length
+        |> should.equal(1)
+
+        case list.first(statements) {
+          Ok(ast.ExpressionStatement(expr: Some(ast.Infixexpression(
+            left: left,
+            operator: operator,
+            right: right,
+          ))))
+            if operator == e_operator && left == e_left && right == e_right
+          -> Nil
+          _ -> should.fail()
+        }
+      }
+      Error(_) -> should.fail()
+    }
+  })
+}
+
+pub fn operator_precedence_test() {
+  let input = "1 + 2 * 3;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: Some(ast.Infixexpression(
+          left: ast.IntegerLiteral(1),
+          operator: "+",
+          right: ast.Infixexpression(
+            left: ast.IntegerLiteral(2),
+            operator: "*",
+            right: ast.IntegerLiteral(3),
+          ),
+        )))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
