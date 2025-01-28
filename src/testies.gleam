@@ -9,5 +9,13 @@ pub fn main() {
 fn f() -> Result(Int, String) {
   let d = [#("x", 1), #("y", 2), #("z", 3)] |> dict.from_list()
   use n <- result.try(result.map_error(dict.get(d, "x"), fn(_) { "asd" }))
+  // let x =
+  //   Ok([
+  //     ExpressionStatement(IfExpression(
+  //       Infixexpression(Identifier("x"), "<", Identifier("y")),
+  //       [ExpressionStatement(IntegerLiteral(1))],
+  //       Some([ExpressionStatement(IntegerLiteral(2))]),
+  //     )),
+  //   ])
   Ok(n)
 }

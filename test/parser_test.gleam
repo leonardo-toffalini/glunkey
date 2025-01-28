@@ -71,8 +71,7 @@ pub fn integer_literal_expression_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: Some(ast.IntegerLiteral(value: 5)))) ->
-          Nil
+        Ok(ast.ExpressionStatement(expr: ast.IntegerLiteral(value: 5))) -> Nil
         _ -> should.fail()
       }
     }
@@ -92,7 +91,7 @@ pub fn identifier_expression_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: Some(ast.Identifier(value: "foobar")))) ->
+        Ok(ast.ExpressionStatement(expr: ast.Identifier(value: "foobar"))) ->
           Nil
         _ -> should.fail()
       }
@@ -113,10 +112,10 @@ pub fn prefix_bang_expression_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: Some(ast.PrefixExpression(
+        Ok(ast.ExpressionStatement(expr: ast.PrefixExpression(
           operator: "!",
           right: ast.IntegerLiteral(value: 5),
-        )))) -> Nil
+        ))) -> Nil
         _ -> should.fail()
       }
     }
@@ -136,10 +135,10 @@ pub fn prefix_minus_expression_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: Some(ast.PrefixExpression(
+        Ok(ast.ExpressionStatement(expr: ast.PrefixExpression(
           operator: "-",
           right: ast.IntegerLiteral(value: 15),
-        )))) -> Nil
+        ))) -> Nil
         _ -> should.fail()
       }
     }
@@ -167,7 +166,7 @@ pub fn multiple_identifier_expressions_test() {
         statements
         |> list.map(fn(stmt) {
           case stmt {
-            ast.ExpressionStatement(expr: Some(ast.Identifier(value: v))) -> v
+            ast.ExpressionStatement(expr: ast.Identifier(value: v)) -> v
             _ -> panic as "expected expression statement with identifier"
           }
         })
@@ -199,11 +198,11 @@ pub fn infix_expression_test() {
         |> should.equal(1)
 
         case list.first(statements) {
-          Ok(ast.ExpressionStatement(expr: Some(ast.Infixexpression(
+          Ok(ast.ExpressionStatement(expr: ast.Infixexpression(
             left: left,
             operator: operator,
             right: right,
-          ))))
+          )))
             if operator == e_operator && left == e_left && right == e_right
           -> Nil
           _ -> should.fail()
@@ -226,7 +225,7 @@ pub fn operator_precedence_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: Some(ast.Infixexpression(
+        Ok(ast.ExpressionStatement(expr: ast.Infixexpression(
           left: ast.IntegerLiteral(1),
           operator: "+",
           right: ast.Infixexpression(
@@ -234,7 +233,7 @@ pub fn operator_precedence_test() {
             operator: "*",
             right: ast.IntegerLiteral(3),
           ),
-        )))) -> Nil
+        ))) -> Nil
         _ -> should.fail()
       }
     }

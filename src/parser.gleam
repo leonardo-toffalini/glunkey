@@ -44,8 +44,12 @@ fn get_prefix_parse_fns() -> dict.Dict(token.TokenType, PrefixParseFn) {
   [
     #(token.Ident, parse_identifier),
     #(token.Int, parse_integer_literal),
+    #(token.TRUE, parse_boolean),
+    #(token.FALSE, parse_boolean),
     #(token.Bang, parse_prefix_expression),
     #(token.Minus, parse_prefix_expression),
+    #(token.LParen, parse_grouped_expression),
+    #(token.If, parse_if_expression),
   ]
   |> dict.from_list()
 }
@@ -138,7 +142,7 @@ fn parse_expression_statement(tokens: List(token.Token)) -> ParseStmtResult {
   use #(expr, rest) <- result.try(parse_expression(tokens, lowest_pre))
   case rest {
     [token.Token(token.Semicolon, ";"), ..rest] ->
-      Ok(#(ast.ExpressionStatement(Some(expr)), rest))
+      Ok(#(ast.ExpressionStatement(expr), rest))
     _ -> Error("Missing semicolon after expression statement")
   }
 }
@@ -215,6 +219,16 @@ fn parse_integer_literal(tokens: List(token.Token)) -> ParseExprResult {
   }
 }
 
+fn parse_boolean(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(token.TRUE, _), ..rest] -> Ok(#(ast.Boolean(True), rest))
+    [token.Token(token.FALSE, _), ..rest] -> Ok(#(ast.Boolean(False), rest))
+    [token.Token(ttype, _), ..] ->
+      Error("Expected boolean, got: " <> string.inspect(ttype))
+    [] -> Error("Expected boolean, got empty tokens list")
+  }
+}
+
 fn parse_prefix_expression(tokens: List(token.Token)) -> ParseExprResult {
   case tokens {
     [token.Token(_, literal), ..rest] -> {
@@ -236,6 +250,94 @@ fn parse_infix_expression(
       Ok(#(ast.Infixexpression(left, literal, right), rest))
     }
     [] -> Error("Expected infix operator, got empty token list")
+  }
+}
+
+fn parse_grouped_expression(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(token.LParen, "("), ..rest] -> {
+      use #(exp, rest) <- result.try(parse_expression(rest, lowest_pre))
+      case rest {
+        [token.Token(token.RParen, ")"), ..rest] -> Ok(#(exp, rest))
+        [token.Token(ttype, _), ..] ->
+          Error("Expected RParen, got " <> string.inspect(ttype))
+        [] -> Error("Expected RParen, got empty token list")
+      }
+    }
+    [token.Token(ttype, _), ..] ->
+      Error("Expected RParen, got " <> string.inspect(ttype))
+    [] -> Error("Expected RParen, got empty token list")
+  }
+}
+
+fn parse_if_expression(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [
+      token.Token(token.If, "if"),
+      token.Token(token.LParen, "(") as lparen,
+      ..rest
+    ] -> {
+      use #(condition, rest) <- result.try(parse_expression(
+        [lparen, ..rest],
+        lowest_pre,
+      ))
+      case rest {
+        [token.Token(token.LBrace, "{") as lbrace, ..rest] -> {
+          use #(consequence, rest) <- result.try(
+            parse_block_statement([lbrace, ..rest]),
+          )
+          case rest {
+            [
+              token.Token(token.Else, "else"),
+              token.Token(token.LBrace, "{") as lbrace,
+              ..rest
+            ] -> {
+              use #(alternative, rest) <- result.try(
+                parse_block_statement([lbrace, ..rest]),
+              )
+              Ok(#(
+                ast.IfExpression(condition, consequence, Some(alternative)),
+                rest,
+              ))
+            }
+            _ -> Ok(#(ast.IfExpression(condition, consequence, None), rest))
+          }
+        }
+        [token.Token(ttype, _), ..] ->
+          Error("Expected LBrace, got: " <> string.inspect(ttype))
+        [] -> Error("Expected LBrace, got empty token list")
+      }
+    }
+    [token.Token(ttype, _), ..] ->
+      Error("Expected 'if', got " <> string.inspect(ttype))
+    [] -> Error("Expected 'if', got empty token list")
+  }
+}
+
+fn parse_block_statement(
+  tokens: List(token.Token),
+) -> Result(#(ast.BlockStatement, List(token.Token)), String) {
+  case tokens {
+    [token.Token(token.LBrace, "{"), ..rest] ->
+      do_parse_block_statement(rest, [])
+    [token.Token(ttype, _), ..] ->
+      Error("Expected LBrace, got " <> string.inspect(ttype))
+    [] -> Error("Expected LBrace, got empty token list")
+  }
+}
+
+fn do_parse_block_statement(
+  tokens: List(token.Token),
+  acc: List(ast.Statement),
+) -> Result(#(ast.BlockStatement, List(token.Token)), String) {
+  case tokens {
+    [token.Token(token.RBrace, "}"), ..rest] -> Ok(#(list.reverse(acc), rest))
+    [token.Token(token.EOF, ""), ..] -> Error("Unterminated block statement")
+    [] -> Error("Expected block statement, got empty token list")
+    _ -> {
+      use #(stmt, rest) <- result.try(parse_statement(tokens))
+      do_parse_block_statement(rest, [stmt, ..acc])
+    }
   }
 }
 
