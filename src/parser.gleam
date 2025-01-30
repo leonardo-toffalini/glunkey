@@ -65,6 +65,7 @@ fn get_infix_parse_fns() -> dict.Dict(token.TokenType, InfixParseFn) {
     #(token.Neq, parse_infix_expression),
     #(token.Lt, parse_infix_expression),
     #(token.Gt, parse_infix_expression),
+    #(token.LParen, parse_call_expression),
   ]
   |> dict.from_list()
 }
@@ -79,6 +80,7 @@ fn get_precedence_dict() -> dict.Dict(token.TokenType, Precedence) {
     #(token.Minus, sum_pre),
     #(token.Slash, product_pre),
     #(token.Star, product_pre),
+    #(token.LParen, call_pre),
   ]
   |> dict.from_list()
 }
@@ -390,6 +392,42 @@ fn do_parse_comma_separated(
         "Expected comma or identifier or closing parenthesis, got "
         <> string.inspect(ttype),
       )
+  }
+}
+
+fn parse_call_expression(
+  function: ast.Expression,
+  tokens: List(token.Token),
+) -> ParseExprResult {
+  use #(args, rest) <- result.try(parse_call_arguments(tokens))
+  Ok(#(ast.CallExpression(function, args), rest))
+}
+
+fn parse_call_arguments(
+  tokens: List(token.Token),
+) -> Result(#(List(ast.Expression), List(token.Token)), String) {
+  case tokens {
+    [token.Token(token.LParen, "("), ..rest] ->
+      do_parse_call_arguments(rest, [])
+    [token.Token(ttype, _), ..] ->
+      Error("Expected LParen, got " <> string.inspect(ttype))
+    [] -> Error("Expected LParen, got empty token list")
+  }
+}
+
+fn do_parse_call_arguments(
+  tokens: List(token.Token),
+  acc: List(ast.Expression),
+) -> Result(#(List(ast.Expression), List(token.Token)), String) {
+  case tokens {
+    [token.Token(token.RParen, ")"), ..rest] -> Ok(#(list.reverse(acc), rest))
+    [token.Token(token.Comma, ","), ..rest] ->
+      do_parse_call_arguments(rest, acc)
+    [] -> Error("Unterminated arguments list")
+    _ -> {
+      use #(arg, rest) <- result.try(parse_expression(tokens, lowest_pre))
+      do_parse_call_arguments(rest, [arg, ..acc])
+    }
   }
 }
 

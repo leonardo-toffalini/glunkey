@@ -21,7 +21,8 @@ pub type Expression {
     consequence: BlockStatement,
     alternative: Option(BlockStatement),
   )
-  FunctionLiteral(parameters: Parameters, body: BlockStatement)
+  FunctionLiteral(parameters: List(Expression), body: BlockStatement)
+  CallExpression(function: Expression, arguments: List(Expression))
   PrefixExpression(operator: String, right: Expression)
   Infixexpression(left: Expression, operator: String, right: Expression)
 }
@@ -31,9 +32,6 @@ pub type Program =
 
 pub type BlockStatement =
   List(Statement)
-
-pub type Parameters =
-  List(Expression)
 
 pub fn print_program(prog: Program) -> Nil {
   case prog {
@@ -65,13 +63,17 @@ fn expression_to_string(expr: Expression) -> String {
       <> stmt_list_to_string(alternative)
       <> " }"
     FunctionLiteral(params, body) ->
-      list.fold(params, "fn (", fn(left, expr) {
-        left <> expression_to_string(expr) <> ","
-      })
+      "fn ("
+      <> list.map(params, expression_to_string) |> string.join(",")
       <> ")"
       <> " { "
       <> stmt_list_to_string(body)
       <> " }"
+    CallExpression(function, args) ->
+      expression_to_string(function)
+      <> "("
+      <> list.map(args, expression_to_string) |> string.join(",")
+      <> ")"
     PrefixExpression(operator, right) -> {
       "(" <> operator <> expression_to_string(right) <> ")"
     }

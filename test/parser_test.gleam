@@ -348,3 +348,61 @@ pub fn empty_parameter_function_literal_test() {
     Error(_) -> should.fail()
   }
 }
+
+pub fn call_expression_test() {
+  let input = "add(1, 2 * 3, 4 + 5);"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.CallExpression(
+          function: ast.Identifier("add"),
+          arguments: [
+            ast.IntegerLiteral(1),
+            ast.Infixexpression(
+              left: ast.IntegerLiteral(2),
+              operator: "*",
+              right: ast.IntegerLiteral(3),
+            ),
+            ast.Infixexpression(
+              left: ast.IntegerLiteral(4),
+              operator: "+",
+              right: ast.IntegerLiteral(5),
+            ),
+          ],
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn empty_argument_call_expression_test() {
+  let input = "add();"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.CallExpression(
+          function: ast.Identifier("add"),
+          arguments: [],
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
