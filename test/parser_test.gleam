@@ -42,6 +42,23 @@ let foobar = 838383;"
   }
 }
 
+pub fn let_statement_test() {
+  let input = "let x = 5;"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      list.first(statements)
+      |> should.equal(Ok(ast.LetStatement(ast.Identifier("x"), ast.IntegerLiteral(5))))
+    }
+    Error(_) -> should.fail()
+  }
+}
+
 pub fn return_statement_test() {
   let input = "return 5;"
   let tokens = lexer.lex(input)
@@ -53,7 +70,7 @@ pub fn return_statement_test() {
       |> should.equal(1)
 
       list.first(statements)
-      |> should.equal(Ok(ast.ReturnStatement(None)))
+      |> should.equal(Ok(ast.ReturnStatement(ast.IntegerLiteral(5))))
     }
     Error(_) -> should.fail()
   }

@@ -6,8 +6,8 @@ import gleam/string
 
 // NOTE: expr fields are optional as of now because we cannot parse expressions just yet
 pub type Statement {
-  LetStatement(name: Expression, value: Option(Expression))
-  ReturnStatement(return_value: Option(Expression))
+  LetStatement(name: Expression, value: Expression)
+  ReturnStatement(return_value: Expression)
   ExpressionStatement(expr: Expression)
   BlockStatement(statements: List(Statement))
 }
@@ -88,12 +88,12 @@ fn expression_to_string(expr: Expression) -> String {
 
 fn statement_to_string(stmt: Statement) -> String {
   case stmt {
-    LetStatement(name, Some(value)) ->
+    LetStatement(name, value) ->
       "let "
       <> expression_to_string(name)
       <> " = "
       <> expression_to_string(value)
-    ReturnStatement(Some(return_value)) ->
+    ReturnStatement(return_value) ->
       "return " <> expression_to_string(return_value)
     ExpressionStatement(expr) -> expression_to_string(expr)
     _ -> "Unable to convert this im sorry"

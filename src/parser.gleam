@@ -113,14 +113,18 @@ fn parse_statement(tokens: List(token.Token)) -> ParseStmtResult {
 fn parse_let_statement(tokens: List(token.Token)) -> ParseStmtResult {
   case tokens {
     [token.Token(token.Ident, ident), token.Token(token.Assign, "="), ..rest] -> {
-      let identifier = ast.Identifier(value: ident)
-      let value = ast.LetStatement(name: identifier, value: None)
-
-      use rest <- result.try(parse_until(
-        rest,
-        token.Token(token.Semicolon, ";"),
-      ))
-      Ok(#(value, rest))
+      use #(val, rest) <- result.try(parse_expression(rest, lowest_pre))
+      case rest {
+        [token.Token(token.Semicolon, ";"), ..rest] ->
+          Ok(#(ast.LetStatement(ast.Identifier(ident), val), rest))
+        [token.Token(ttype, _), ..] ->
+          Error(
+            "Expected semicolon after let statement, got "
+            <> string.inspect(ttype),
+          )
+        [] ->
+          Error("Expected semicolon after let statement, got empty token list")
+      }
     }
 
     // unexpected outcomes
@@ -136,9 +140,18 @@ fn parse_let_statement(tokens: List(token.Token)) -> ParseStmtResult {
 }
 
 fn parse_return_statement(tokens: List(token.Token)) -> ParseStmtResult {
-  let return_statement = ast.ReturnStatement(return_value: None)
-  use rest <- result.try(parse_until(tokens, token.Token(token.Semicolon, ";")))
-  Ok(#(return_statement, rest))
+  use #(return_value, rest) <- result.try(parse_expression(tokens, lowest_pre))
+  case rest {
+    [token.Token(token.Semicolon, ";"), ..rest] ->
+      Ok(#(ast.ReturnStatement(return_value), rest))
+    [token.Token(ttype, _), ..] ->
+      Error(
+        "Expected semicolon after return statement, got "
+        <> string.inspect(ttype),
+      )
+    [] ->
+      Error("Expected semicolon after return statement, got empty token list")
+  }
 }
 
 fn parse_expression_statement(tokens: List(token.Token)) -> ParseStmtResult {
