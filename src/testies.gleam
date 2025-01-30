@@ -11,11 +11,11 @@ fn f() -> Result(Int, String) {
   use n <- result.try(result.map_error(dict.get(d, "x"), fn(_) { "asd" }))
   // let x =
   //   Ok([
-  //     ExpressionStatement(IfExpression(
-  //       Infixexpression(Identifier("x"), "<", Identifier("y")),
-  //       [ExpressionStatement(IntegerLiteral(1))],
-  //       Some([ExpressionStatement(IntegerLiteral(2))]),
-  //     )),
+  //     ExpressionStatement(
+  //       FunctionLiteral([Identifier("x"), Identifier("y")], [
+  //         ExpressionStatement(IntegerLiteral(3)),
+  //       ]),
+  //     ),
   //   ])
   Ok(n)
 }

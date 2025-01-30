@@ -240,3 +240,111 @@ pub fn operator_precedence_test() {
     Error(_) -> should.fail()
   }
 }
+
+pub fn if_expression_test() {
+  let input = "if (x < y) { x; };"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.IfExpression(
+          condition: ast.Infixexpression(
+            left: ast.Identifier("x"),
+            operator: "<",
+            right: ast.Identifier("y"),
+          ),
+          consequence: [ast.ExpressionStatement(ast.Identifier("x"))],
+          alternative: None,
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn if_else_expression_test() {
+  let input = "if (x < y) { x; } else { y; };"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.IfExpression(
+          condition: ast.Infixexpression(
+            left: ast.Identifier("x"),
+            operator: "<",
+            right: ast.Identifier("y"),
+          ),
+          consequence: [ast.ExpressionStatement(ast.Identifier("x"))],
+          alternative: Some([ast.ExpressionStatement(ast.Identifier("y"))]),
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn function_literal_test() {
+  let input = "fn(x, y) { x + y; };"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.FunctionLiteral(
+          parameters: [ast.Identifier("x"), ast.Identifier("y")],
+          body: [
+            ast.ExpressionStatement(ast.Infixexpression(
+              left: ast.Identifier("x"),
+              operator: "+",
+              right: ast.Identifier("y"),
+            )),
+          ],
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn empty_parameter_function_literal_test() {
+  let input = "fn() { 1; };"
+  let tokens = lexer.lex(input)
+  let program = parser.parse(tokens)
+
+  case program {
+    Ok(statements) -> {
+      statements
+      |> list.length
+      |> should.equal(1)
+
+      case list.first(statements) {
+        Ok(ast.ExpressionStatement(expr: ast.FunctionLiteral(
+          parameters: [],
+          body: [ast.ExpressionStatement(ast.IntegerLiteral(1))],
+        ))) -> Nil
+        _ -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
+  }
+}

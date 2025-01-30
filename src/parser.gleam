@@ -50,6 +50,7 @@ fn get_prefix_parse_fns() -> dict.Dict(token.TokenType, PrefixParseFn) {
     #(token.Minus, parse_prefix_expression),
     #(token.LParen, parse_grouped_expression),
     #(token.If, parse_if_expression),
+    #(token.Function, parse_function_literal),
   ]
   |> dict.from_list()
 }
@@ -326,6 +327,28 @@ fn parse_block_statement(
   }
 }
 
+fn parse_function_literal(tokens: List(token.Token)) -> ParseExprResult {
+  case tokens {
+    [token.Token(token.Function, "fn"), token.Token(token.LParen, "("), ..rest] -> {
+      use #(params, rest) <- result.try(parse_function_parameters(rest))
+      case rest {
+        [token.Token(token.LBrace, "{") as lbrace, ..rest] -> {
+          use #(body, rest) <- result.try(
+            parse_block_statement([lbrace, ..rest]),
+          )
+          Ok(#(ast.FunctionLiteral(params, body), rest))
+        }
+        [token.Token(ttype, _), ..] ->
+          Error("Expected LBrace, got: " <> string.inspect(ttype))
+        [] -> Error("Expected LBrace, got empty token list")
+      }
+    }
+    [token.Token(ttype, _), ..] ->
+      Error("Expected function literal, got " <> string.inspect(ttype))
+    [] -> Error("Expected function literal, got empty token list")
+  }
+}
+
 fn do_parse_block_statement(
   tokens: List(token.Token),
   acc: List(ast.Statement),
@@ -338,6 +361,35 @@ fn do_parse_block_statement(
       use #(stmt, rest) <- result.try(parse_statement(tokens))
       do_parse_block_statement(rest, [stmt, ..acc])
     }
+  }
+}
+
+fn parse_function_parameters(
+  tokens: List(token.Token),
+) -> Result(#(List(ast.Expression), List(token.Token)), String) {
+  case tokens {
+    [token.Token(token.RParen, ")"), ..rest] -> Ok(#([], rest))
+    [token.Token(token.Ident, _), ..] -> do_parse_comma_separated(tokens, [])
+    _ -> panic
+  }
+}
+
+fn do_parse_comma_separated(
+  tokens: List(token.Token),
+  acc: List(ast.Expression),
+) -> Result(#(List(ast.Expression), List(token.Token)), String) {
+  case tokens {
+    [] -> Error("Unterminated parameter list")
+    [token.Token(token.RParen, _), ..rest] -> Ok(#(list.reverse(acc), rest))
+    [token.Token(token.Ident, lit), ..rest] ->
+      do_parse_comma_separated(rest, [ast.Identifier(lit), ..acc])
+    [token.Token(token.Comma, ","), ..rest] ->
+      do_parse_comma_separated(rest, acc)
+    [token.Token(ttype, _), ..] ->
+      Error(
+        "Expected comma or identifier or closing parenthesis, got "
+        <> string.inspect(ttype),
+      )
   }
 }
 
