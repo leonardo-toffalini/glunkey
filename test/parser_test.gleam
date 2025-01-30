@@ -53,7 +53,9 @@ pub fn let_statement_test() {
       |> should.equal(1)
 
       list.first(statements)
-      |> should.equal(Ok(ast.LetStatement(ast.Identifier("x"), ast.IntegerLiteral(5))))
+      |> should.equal(
+        Ok(ast.LetStatement(ast.Identifier("x"), ast.IntegerLiteral(5))),
+      )
     }
     Error(_) -> should.fail()
   }
