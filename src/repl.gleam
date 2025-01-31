@@ -1,8 +1,8 @@
-import gleam/result
-import eval
 import ast
+import eval
 import gleam/erlang
 import gleam/io
+import gleam/result
 import lexer
 import parser
 
@@ -24,10 +24,11 @@ pub fn main() {
   let _ = io.debug(program)
 
   io.debug("Eval:")
-  let _ = result.try(program, fn(prog) {
+  let _ =
+    result.try(program, fn(prog) {
       let obj = eval.eval(ast.ProgramNode(prog))
       io.debug(obj)
-  })
+    })
 
   main()
 }

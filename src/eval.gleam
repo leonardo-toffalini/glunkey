@@ -1,13 +1,15 @@
-import object
 import ast
+import object
 
-pub type EvalResult = Result(object.Object, String)
+pub type EvalResult =
+  Result(object.Object, String)
 
 pub fn eval(node: ast.Node) -> EvalResult {
   case node {
     ast.ProgramNode(stmts) -> eval_statements(stmts)
 
-    ast.StatementNode(ast.ExpressionStatement(expr)) -> eval(ast.ExpressionNode(expr))
+    ast.StatementNode(ast.ExpressionStatement(expr)) ->
+      eval(ast.ExpressionNode(expr))
 
     ast.ExpressionNode(ast.IntegerLiteral(val)) -> Ok(object.Integer(val))
     _ -> Error("Unable to evaluate this node")
@@ -24,5 +26,3 @@ pub fn eval_statements(stmts: List(ast.Statement)) -> EvalResult {
     }
   }
 }
-
-
