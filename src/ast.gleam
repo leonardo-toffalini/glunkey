@@ -4,7 +4,12 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
-// NOTE: expr fields are optional as of now because we cannot parse expressions just yet
+pub type Node {
+  StatementNode(Statement)
+  ExpressionNode(Expression)
+  ProgramNode(Program)
+}
+
 pub type Statement {
   LetStatement(name: Expression, value: Expression)
   ReturnStatement(return_value: Expression)

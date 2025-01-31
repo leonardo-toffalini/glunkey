@@ -1,3 +1,5 @@
+import gleam/result
+import eval
 import ast
 import gleam/erlang
 import gleam/io
@@ -20,6 +22,12 @@ pub fn main() {
   }
   io.debug("AST:")
   let _ = io.debug(program)
+
+  io.debug("Eval:")
+  let _ = result.try(program, fn(prog) {
+      let obj = eval.eval(ast.ProgramNode(prog))
+      io.debug(obj)
+  })
 
   main()
 }
