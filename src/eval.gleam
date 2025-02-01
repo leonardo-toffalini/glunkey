@@ -62,6 +62,8 @@ fn eval_infix_expression(
   case left, right {
     object.Integer(left_val), object.Integer(right_val) ->
       eval_int_infix_expression(left_val, operator, right_val)
+    object.Boolean(left_val), object.Boolean(right_val) ->
+      eval_bool_infix_expression(left_val, operator, right_val)
     _, _ ->
       Error("Unsupported operand types, only ints are supported as of now")
   }
@@ -77,7 +79,23 @@ fn eval_int_infix_expression(
     "-" -> Ok(object.Integer(left - right))
     "*" -> Ok(object.Integer(left * right))
     "/" -> Ok(object.Integer(left / right))
+    "<" -> Ok(native_bool_to_obj(left < right))
+    ">" -> Ok(native_bool_to_obj(left > right))
+    "==" -> Ok(native_bool_to_obj(left == right))
+    "!=" -> Ok(native_bool_to_obj(left != right))
     op -> Error("Unsupported operator for int-int infix expression: " <> op)
+  }
+}
+
+fn eval_bool_infix_expression(
+  left: Bool,
+  operator: String,
+  right: Bool,
+) -> EvalResult {
+  case operator {
+    "==" -> Ok(native_bool_to_obj(left == right))
+    "!=" -> Ok(native_bool_to_obj(left != right))
+    op -> Error("Unsupported operator for bool-bool infix expression: " <> op)
   }
 }
 
