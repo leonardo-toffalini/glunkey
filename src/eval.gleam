@@ -1,9 +1,10 @@
 import ast
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import object
 
-// const null_obj = object.Null
+const null_obj = object.Null
 
 const true_obj = object.Boolean(True)
 
@@ -16,9 +17,12 @@ pub fn eval(node: ast.Node) -> EvalResult {
   case node {
     ast.ProgramNode(stmts) -> eval_statements(stmts)
 
+    // Statements
     ast.StatementNode(ast.ExpressionStatement(expr)) ->
       eval(ast.ExpressionNode(expr))
+    ast.StatementNode(ast.BlockStatement(stmts)) -> eval_statements(stmts)
 
+    // Expressions
     ast.ExpressionNode(ast.IntegerLiteral(val)) -> Ok(object.Integer(val))
     ast.ExpressionNode(ast.Boolean(val)) -> native_bool_to_obj(val) |> Ok()
     ast.ExpressionNode(ast.PrefixExpression(op, right)) -> {
@@ -30,6 +34,8 @@ pub fn eval(node: ast.Node) -> EvalResult {
       use right <- result.try(eval(ast.ExpressionNode(right)))
       eval_infix_expression(left, op, right)
     }
+    ast.ExpressionNode(ast.IfExpression(condition, consequence, alternative)) ->
+      eval_if_expression(condition, consequence, alternative)
 
     _ -> Error("Unable to evaluate this node")
   }
@@ -115,6 +121,29 @@ fn eval_minus_op_expression(right: object.Object) -> EvalResult {
       Error(
         "No way to evaluate minus prefix expression for " <> string.inspect(obj),
       )
+  }
+}
+
+fn eval_if_expression(
+  condition: ast.Expression,
+  consequence: ast.BlockStatement,
+  alternative: Option(ast.BlockStatement),
+) {
+  use condition <- result.try(eval(ast.ExpressionNode(condition)))
+  case is_truthy(condition), alternative {
+    True, _ -> eval_statements(consequence)
+    False, Some(alternative) -> eval_statements(alternative)
+    False, None -> Ok(null_obj)
+    // todo as "do you really want to return a null object here? or make it so every if expression must have an else branch"
+  }
+}
+
+fn is_truthy(obj: object.Object) {
+  case obj {
+    object.Boolean(True) -> True
+    object.Boolean(False) -> False
+    object.Null -> False
+    _ -> True
   }
 }
 
