@@ -29,7 +29,7 @@ pub type Expression {
   FunctionLiteral(parameters: List(Expression), body: BlockStatement)
   CallExpression(function: Expression, arguments: List(Expression))
   PrefixExpression(operator: String, right: Expression)
-  Infixexpression(left: Expression, operator: String, right: Expression)
+  InfixExpression(left: Expression, operator: String, right: Expression)
 }
 
 pub type Program =
@@ -82,7 +82,7 @@ fn expression_to_string(expr: Expression) -> String {
     PrefixExpression(operator, right) -> {
       "(" <> operator <> expression_to_string(right) <> ")"
     }
-    Infixexpression(left, operator, right) ->
+    InfixExpression(left, operator, right) ->
       "("
       <> expression_to_string(left)
       <> operator

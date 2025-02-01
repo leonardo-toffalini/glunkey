@@ -263,7 +263,7 @@ fn parse_infix_expression(
     [token.Token(ttype, literal), ..rest] -> {
       let precedence = get_precedence(ttype)
       use #(right, rest) <- result.try(parse_expression(rest, precedence))
-      Ok(#(ast.Infixexpression(left, literal, right), rest))
+      Ok(#(ast.InfixExpression(left, literal, right), rest))
     }
     [] -> Error("Expected infix operator, got empty token list")
   }

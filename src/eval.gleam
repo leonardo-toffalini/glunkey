@@ -3,7 +3,7 @@ import gleam/result
 import gleam/string
 import object
 
-const null_obj = object.Null
+// const null_obj = object.Null
 
 const true_obj = object.Boolean(True)
 
@@ -24,6 +24,11 @@ pub fn eval(node: ast.Node) -> EvalResult {
     ast.ExpressionNode(ast.PrefixExpression(op, right)) -> {
       use right <- result.try(eval(ast.ExpressionNode(right)))
       eval_prefix_expression(op, right)
+    }
+    ast.ExpressionNode(ast.InfixExpression(left, op, right)) -> {
+      use left <- result.try(eval(ast.ExpressionNode(left)))
+      use right <- result.try(eval(ast.ExpressionNode(right)))
+      eval_infix_expression(left, op, right)
     }
 
     _ -> Error("Unable to evaluate this node")
@@ -46,6 +51,33 @@ fn eval_prefix_expression(operator: String, right: object.Object) -> EvalResult 
     "!" -> eval_bang_op_expression(right)
     "-" -> eval_minus_op_expression(right)
     op -> Error("Cannot evaluate prefix expression for operator " <> op)
+  }
+}
+
+fn eval_infix_expression(
+  left: object.Object,
+  operator: String,
+  right: object.Object,
+) -> EvalResult {
+  case left, right {
+    object.Integer(left_val), object.Integer(right_val) ->
+      eval_int_infix_expression(left_val, operator, right_val)
+    _, _ ->
+      Error("Unsupported operand types, only ints are supported as of now")
+  }
+}
+
+fn eval_int_infix_expression(
+  left: Int,
+  operator: String,
+  right: Int,
+) -> EvalResult {
+  case operator {
+    "+" -> Ok(object.Integer(left + right))
+    "-" -> Ok(object.Integer(left - right))
+    "*" -> Ok(object.Integer(left * right))
+    "/" -> Ok(object.Integer(left / right))
+    op -> Error("Unsupported operator for int-int infix expression: " <> op)
   }
 }
 

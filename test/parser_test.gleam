@@ -217,7 +217,7 @@ pub fn infix_expression_test() {
         |> should.equal(1)
 
         case list.first(statements) {
-          Ok(ast.ExpressionStatement(expr: ast.Infixexpression(
+          Ok(ast.ExpressionStatement(expr: ast.InfixExpression(
             left: left,
             operator: operator,
             right: right,
@@ -244,10 +244,10 @@ pub fn operator_precedence_test() {
       |> should.equal(1)
 
       case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: ast.Infixexpression(
+        Ok(ast.ExpressionStatement(expr: ast.InfixExpression(
           left: ast.IntegerLiteral(1),
           operator: "+",
-          right: ast.Infixexpression(
+          right: ast.InfixExpression(
             left: ast.IntegerLiteral(2),
             operator: "*",
             right: ast.IntegerLiteral(3),
@@ -273,7 +273,7 @@ pub fn if_expression_test() {
 
       case list.first(statements) {
         Ok(ast.ExpressionStatement(expr: ast.IfExpression(
-          condition: ast.Infixexpression(
+          condition: ast.InfixExpression(
             left: ast.Identifier("x"),
             operator: "<",
             right: ast.Identifier("y"),
@@ -301,7 +301,7 @@ pub fn if_else_expression_test() {
 
       case list.first(statements) {
         Ok(ast.ExpressionStatement(expr: ast.IfExpression(
-          condition: ast.Infixexpression(
+          condition: ast.InfixExpression(
             left: ast.Identifier("x"),
             operator: "<",
             right: ast.Identifier("y"),
@@ -331,7 +331,7 @@ pub fn function_literal_test() {
         Ok(ast.ExpressionStatement(expr: ast.FunctionLiteral(
           parameters: [ast.Identifier("x"), ast.Identifier("y")],
           body: [
-            ast.ExpressionStatement(ast.Infixexpression(
+            ast.ExpressionStatement(ast.InfixExpression(
               left: ast.Identifier("x"),
               operator: "+",
               right: ast.Identifier("y"),
@@ -384,12 +384,12 @@ pub fn call_expression_test() {
           function: ast.Identifier("add"),
           arguments: [
             ast.IntegerLiteral(1),
-            ast.Infixexpression(
+            ast.InfixExpression(
               left: ast.IntegerLiteral(2),
               operator: "*",
               right: ast.IntegerLiteral(3),
             ),
-            ast.Infixexpression(
+            ast.InfixExpression(
               left: ast.IntegerLiteral(4),
               operator: "+",
               right: ast.IntegerLiteral(5),
