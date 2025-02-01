@@ -1,10 +1,7 @@
 import ast
-import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import object
-
-const null_obj = object.Null
 
 const true_obj = object.Boolean(True)
 
@@ -127,13 +124,12 @@ fn eval_minus_op_expression(right: object.Object) -> EvalResult {
 fn eval_if_expression(
   condition: ast.Expression,
   consequence: ast.BlockStatement,
-  alternative: Option(ast.BlockStatement),
+  alternative: ast.BlockStatement,
 ) {
   use condition <- result.try(eval(ast.ExpressionNode(condition)))
   case is_truthy(condition), alternative {
     True, _ -> eval_statements(consequence)
-    False, Some(alternative) -> eval_statements(alternative)
-    False, None -> Ok(null_obj)
+    False, alternative -> eval_statements(alternative)
     // todo as "do you really want to return a null object here? or make it so every if expression must have an else branch"
   }
 }

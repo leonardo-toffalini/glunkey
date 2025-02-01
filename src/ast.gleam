@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{type Option, None, Some}
 import gleam/string
 
 pub type Node {
@@ -24,7 +23,7 @@ pub type Expression {
   IfExpression(
     condition: Expression,
     consequence: BlockStatement,
-    alternative: Option(BlockStatement),
+    alternative: BlockStatement,
   )
   FunctionLiteral(parameters: List(Expression), body: BlockStatement)
   CallExpression(function: Expression, arguments: List(Expression))
@@ -53,13 +52,7 @@ fn expression_to_string(expr: Expression) -> String {
     Identifier(value) -> value
     IntegerLiteral(value) -> int.to_string(value)
     Boolean(value) -> string.inspect(value)
-    IfExpression(condition, consequence, None) ->
-      "if "
-      <> expression_to_string(condition)
-      <> " { "
-      <> stmt_list_to_string(consequence)
-      <> " }"
-    IfExpression(condition, consequence, Some(alternative)) ->
+    IfExpression(condition, consequence, alternative) ->
       "if "
       <> expression_to_string(condition)
       <> " { "

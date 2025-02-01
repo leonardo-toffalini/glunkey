@@ -2,7 +2,6 @@ import ast
 import gleam/dict
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import token
@@ -311,12 +310,11 @@ fn parse_if_expression(tokens: List(token.Token)) -> ParseExprResult {
               use #(alternative, rest) <- result.try(
                 parse_block_statement([lbrace, ..rest]),
               )
-              Ok(#(
-                ast.IfExpression(condition, consequence, Some(alternative)),
-                rest,
-              ))
+              Ok(#(ast.IfExpression(condition, consequence, alternative), rest))
             }
-            _ -> Ok(#(ast.IfExpression(condition, consequence, None), rest))
+            [token.Token(ttype, _), ..] ->
+              Error("Expected else, got " <> string.inspect(ttype))
+            [] -> Error("Expected else, got empty token list")
           }
         }
         [token.Token(ttype, _), ..] ->

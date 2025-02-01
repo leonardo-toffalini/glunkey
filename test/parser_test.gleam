@@ -1,6 +1,5 @@
 import ast
 import gleam/list
-import gleam/option.{None, Some}
 import gleeunit
 import gleeunit/should
 import lexer
@@ -260,34 +259,6 @@ pub fn operator_precedence_test() {
   }
 }
 
-pub fn if_expression_test() {
-  let input = "if (x < y) { x; };"
-  let tokens = lexer.lex(input)
-  let program = parser.parse(tokens)
-
-  case program {
-    Ok(statements) -> {
-      statements
-      |> list.length
-      |> should.equal(1)
-
-      case list.first(statements) {
-        Ok(ast.ExpressionStatement(expr: ast.IfExpression(
-          condition: ast.InfixExpression(
-            left: ast.Identifier("x"),
-            operator: "<",
-            right: ast.Identifier("y"),
-          ),
-          consequence: [ast.ExpressionStatement(ast.Identifier("x"))],
-          alternative: None,
-        ))) -> Nil
-        _ -> should.fail()
-      }
-    }
-    Error(_) -> should.fail()
-  }
-}
-
 pub fn if_else_expression_test() {
   let input = "if (x < y) { x; } else { y; };"
   let tokens = lexer.lex(input)
@@ -307,7 +278,7 @@ pub fn if_else_expression_test() {
             right: ast.Identifier("y"),
           ),
           consequence: [ast.ExpressionStatement(ast.Identifier("x"))],
-          alternative: Some([ast.ExpressionStatement(ast.Identifier("y"))]),
+          alternative: [ast.ExpressionStatement(ast.Identifier("y"))],
         ))) -> Nil
         _ -> should.fail()
       }
