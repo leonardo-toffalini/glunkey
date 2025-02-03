@@ -1,17 +1,18 @@
 import ast
-import environment
+import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
-import object
+import object.{get, insert}
 
 const true_obj = object.Boolean(True)
 
 const false_obj = object.Boolean(False)
 
 pub type EvalResult =
-  Result(#(object.Object, environment.Environment), String)
+  Result(#(object.Object, object.Environment), String)
 
-pub fn eval(node: ast.Node, env: environment.Environment) -> EvalResult {
+pub fn eval(node: ast.Node, env: object.Environment) -> EvalResult {
   case node {
     ast.ProgramNode(stmts) -> eval_statements(stmts, env)
 
@@ -23,7 +24,7 @@ pub fn eval(node: ast.Node, env: environment.Environment) -> EvalResult {
       Error("Return statements are not supported by design")
     ast.StatementNode(ast.LetStatement(ast.Identifier(name), val)) -> {
       use #(val, env) <- result.try(eval(ast.ExpressionNode(val), env))
-      let env = environment.insert(env, name, val)
+      let env = insert(env, name, val)
       Ok(#(val, env))
     }
 
@@ -43,6 +44,14 @@ pub fn eval(node: ast.Node, env: environment.Environment) -> EvalResult {
     ast.ExpressionNode(ast.IfExpression(condition, consequence, alternative)) ->
       eval_if_expression(condition, consequence, alternative, env)
     ast.ExpressionNode(ast.Identifier(name)) -> eval_identifier(name, env)
+    ast.ExpressionNode(ast.FunctionLiteral(params, body)) ->
+      Ok(#(object.Function(params, body, env), env))
+    ast.ExpressionNode(ast.CallExpression(function, args)) -> {
+      use #(function, env) <- result.try(eval(ast.ExpressionNode(function), env))
+      use #(args, _env) <- result.try(eval_expressions(args, env))
+      use #(obj, _env) <- result.try(apply_function(function, args))
+      Ok(#(obj, env))
+    }
 
     _ -> Error("Unable to evaluate this node")
   }
@@ -50,14 +59,35 @@ pub fn eval(node: ast.Node, env: environment.Environment) -> EvalResult {
 
 fn eval_statements(
   stmts: List(ast.Statement),
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case stmts {
     [] -> Error("Expected list of statements, got empty list")
     [stmt] -> eval(ast.StatementNode(stmt), env)
     [stmt, ..rest] -> {
-      let _ = eval(ast.StatementNode(stmt), env)
+      use #(_, env) <- result.try(eval(ast.StatementNode(stmt), env))
       eval_statements(rest, env)
+    }
+  }
+}
+
+fn eval_expressions(
+  exprs: List(ast.Expression),
+  env: object.Environment,
+) -> Result(#(List(object.Object), object.Environment), String) {
+  do_eval_expressions(exprs, env, [])
+}
+
+fn do_eval_expressions(
+  exprs: List(ast.Expression),
+  env: object.Environment,
+  acc: List(object.Object),
+) -> Result(#(List(object.Object), object.Environment), String) {
+  case exprs {
+    [] -> Ok(#(list.reverse(acc), env))
+    [expr, ..rest] -> {
+      use #(obj, env) <- result.try(eval(ast.ExpressionNode(expr), env))
+      do_eval_expressions(rest, env, [obj, ..acc])
     }
   }
 }
@@ -65,7 +95,7 @@ fn eval_statements(
 fn eval_prefix_expression(
   operator: String,
   right: object.Object,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case operator {
     "!" -> eval_bang_op_expression(right, env)
@@ -78,7 +108,7 @@ fn eval_infix_expression(
   left: object.Object,
   operator: String,
   right: object.Object,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case left, right {
     object.Integer(left_val), object.Integer(right_val) ->
@@ -94,7 +124,7 @@ fn eval_int_infix_expression(
   left: Int,
   operator: String,
   right: Int,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case operator {
     "+" -> Ok(#(object.Integer(left + right), env))
@@ -113,7 +143,7 @@ fn eval_bool_infix_expression(
   left: Bool,
   operator: String,
   right: Bool,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case operator {
     "==" -> Ok(#(native_bool_to_obj(left == right), env))
@@ -124,7 +154,7 @@ fn eval_bool_infix_expression(
 
 fn eval_bang_op_expression(
   right: object.Object,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case right {
     object.Boolean(True) -> Ok(#(false_obj, env))
@@ -135,7 +165,7 @@ fn eval_bang_op_expression(
 
 fn eval_minus_op_expression(
   right: object.Object,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   case right {
     object.Integer(val) -> Ok(#(object.Integer(-val), env))
@@ -150,20 +180,56 @@ fn eval_if_expression(
   condition: ast.Expression,
   consequence: ast.BlockStatement,
   alternative: ast.BlockStatement,
-  env: environment.Environment,
+  env: object.Environment,
 ) -> EvalResult {
   use #(condition, env) <- result.try(eval(ast.ExpressionNode(condition), env))
   case is_truthy(condition), alternative {
     True, _ -> eval_statements(consequence, env)
     False, alternative -> eval_statements(alternative, env)
-    // todo as "do you really want to return a null object here? or make it so every if expression must have an else branch"
   }
 }
 
-fn eval_identifier(name: String, env: environment.Environment) -> EvalResult {
-  case environment.get(env, name) {
+fn eval_identifier(name: String, env: object.Environment) -> EvalResult {
+  case get(env, name) {
     Ok(val) -> Ok(#(val, env))
     Error(Nil) -> Error("identifier not found: " <> name)
+  }
+}
+
+fn apply_function(
+  function: object.Object,
+  args: List(object.Object),
+) -> EvalResult {
+  use extended_env <- result.try(extend_function_env(function, args))
+  case function {
+    object.Function(_params, body, _env) -> eval_statements(body, extended_env)
+    _ -> Error("Expected Function object")
+  }
+}
+
+fn extend_function_env(
+  function: object.Object,
+  args: List(object.Object),
+) -> Result(object.Environment, String) {
+  case function {
+    object.Function(params, _body, env) ->
+      object.new(Some(env)) |> insert_args(args, params)
+    _ -> Error("AAAAAAAAAAAAAAA")
+  }
+}
+
+fn insert_args(
+  env: object.Environment,
+  args: List(object.Object),
+  params: List(ast.Expression),
+) -> Result(object.Environment, String) {
+  case args, params {
+    [], [] -> Ok(env)
+    [_, ..], [] -> Error("More args than params")
+    [], [_, ..] -> Error("More params than args")
+    [arg, ..rest_args], [ast.Identifier(val), ..rest_params] ->
+      object.insert(env, val, arg) |> insert_args(rest_args, rest_params)
+    _, _ -> panic
   }
 }
 

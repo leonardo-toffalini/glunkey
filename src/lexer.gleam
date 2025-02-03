@@ -40,7 +40,6 @@ fn do_lex(input: String, acc: List(token.Token)) -> List(token.Token) {
     "}" <> rest -> do_lex(rest, [token.Token(token.RBrace, "}"), ..acc])
 
     // numbers
-    // todo: currently only single digit numbers are lexed
     "1" as c <> rest
     | "2" as c <> rest
     | "3" as c <> rest

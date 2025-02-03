@@ -1,13 +1,14 @@
 import ast
-import environment
 import eval
 import gleam/erlang
 import gleam/io
+import gleam/option.{None}
 import lexer
-import object
+import object.{type Environment, new}
 import parser
 
-fn repl(env: environment.Environment) {
+fn repl(env: Environment) {
+  io.debug(env)
   let prompt = ">> "
 
   let assert Ok(line) = erlang.get_line(prompt)
@@ -33,6 +34,6 @@ fn repl(env: environment.Environment) {
 }
 
 pub fn main() {
-  let env = environment.new()
+  let env = new(None)
   repl(env)
 }
