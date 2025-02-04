@@ -8,7 +8,6 @@ import object.{type Environment, new}
 import parser
 
 fn repl(env: Environment) {
-  io.debug(env)
   let prompt = ">> "
 
   let assert Ok(line) = erlang.get_line(prompt)

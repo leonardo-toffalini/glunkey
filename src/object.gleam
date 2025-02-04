@@ -1,5 +1,6 @@
 import ast
 import gleam/dict.{type Dict}
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
@@ -22,7 +23,7 @@ pub fn get(env: Environment, key: String) -> Result(Object, Nil) {
 
 pub fn insert(env: Environment, key: String, val: Object) -> Environment {
   let s = dict.insert(env.store, key, val)
-  Environment(s, None)
+  Environment(s, env.outer)
 }
 
 pub type Object {
@@ -39,6 +40,14 @@ pub fn object_to_string(obj: Object) -> String {
   case obj {
     Integer(value) -> string.inspect(value)
     Boolean(value) -> string.inspect(value)
-    Function(_, _, _) -> "Function object"
+    Function(params, body, _) -> {
+      "fn ("
+      <> list.map(params, fn(p) { ast.expression_to_string(p) })
+      |> string.join(", ")
+      <> ")"
+      <> " { "
+      <> ast.stmt_list_to_string(body)
+      <> " }"
+    }
   }
 }

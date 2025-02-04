@@ -47,7 +47,7 @@ pub fn print_program(prog: Program) -> Nil {
   }
 }
 
-fn expression_to_string(expr: Expression) -> String {
+pub fn expression_to_string(expr: Expression) -> String {
   case expr {
     Identifier(value) -> value
     IntegerLiteral(value) -> int.to_string(value)
@@ -98,6 +98,6 @@ fn statement_to_string(stmt: Statement) -> String {
   }
 }
 
-fn stmt_list_to_string(stmts: List(Statement)) -> String {
+pub fn stmt_list_to_string(stmts: List(Statement)) -> String {
   list.fold(stmts, "", fn(left, stmt) { left <> statement_to_string(stmt) })
 }

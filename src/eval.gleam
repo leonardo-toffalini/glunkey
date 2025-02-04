@@ -200,9 +200,11 @@ fn apply_function(
   function: object.Object,
   args: List(object.Object),
 ) -> EvalResult {
-  use extended_env <- result.try(extend_function_env(function, args))
   case function {
-    object.Function(_params, body, _env) -> eval_statements(body, extended_env)
+    object.Function(_params, body, _env) -> {
+      use extended_env <- result.try(extend_function_env(function, args))
+      eval_statements(body, extended_env)
+    }
     _ -> Error("Expected Function object")
   }
 }
@@ -212,9 +214,11 @@ fn extend_function_env(
   args: List(object.Object),
 ) -> Result(object.Environment, String) {
   case function {
-    object.Function(params, _body, env) ->
-      object.new(Some(env)) |> insert_args(args, params)
-    _ -> Error("AAAAAAAAAAAAAAA")
+    object.Function(params, _body, env) -> {
+      let new_env = object.new(Some(env))
+      insert_args(new_env, args, params)
+    }
+    _ -> Error("Invalid function object")
   }
 }
 
